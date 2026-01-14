@@ -60,7 +60,7 @@ Example of the output (individual results may differ):
 
 ---
 
-## Step 2: Case file simmary for a selected community (example here: community 228)
+## Step 2: Case file summary for a selected community (example here: community 228)
 
 ### Objective: generate a single case summary for a fraud investigation
 
