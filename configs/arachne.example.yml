@@ -1,0 +1,31 @@
+project:
+  name: arachne
+  seed: 42
+
+neo4j:
+  uri: "bolt://localhost:7687"
+  user: "neo4j"
+  password: "password123"
+  database: "neo4j"
+
+simulator:
+  n_people: 2000
+  n_merchants: 120
+  n_transactions: 50000
+
+  # Fraud structure
+  n_rings: 12
+  ring_size_min: 6
+  ring_size_max: 20
+  fraud_tx_share: 0.08
+
+  # Shared infrastructure intensity (bigger leads to me more linkage)
+  shared_device_prob: 0.70
+  shared_ip_prob: 0.55
+  shared_address_prob: 0.45
+  shared_card_prob: 0.35
+
+paths:
+  data_bronze: "data/bronze"
+  data_silver: "data/silver"
+  data_exports: "data/exports"

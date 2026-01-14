@@ -1,0 +1,31 @@
+// Uniqueness constraints
+
+CREATE CONSTRAINT person_id IF NOT EXISTS
+FOR (n:Person) REQUIRE n.person_id IS UNIQUE;
+
+CREATE CONSTRAINT account_id IF NOT EXISTS
+FOR (n:Account) REQUIRE n.account_id IS UNIQUE;
+
+CREATE CONSTRAINT tx_id IF NOT EXISTS
+FOR (n:Transaction) REQUIRE n.tx_id IS UNIQUE;
+
+CREATE CONSTRAINT device_id IF NOT EXISTS
+FOR (n:Device) REQUIRE n.device_id IS UNIQUE;
+
+CREATE CONSTRAINT ip_value IF NOT EXISTS
+FOR (n:IP) REQUIRE n.ip IS UNIQUE;
+
+CREATE CONSTRAINT email_value IF NOT EXISTS
+FOR (n:Email) REQUIRE n.email IS UNIQUE;
+
+CREATE CONSTRAINT phone_value IF NOT EXISTS
+FOR (n:Phone) REQUIRE n.phone IS UNIQUE;
+
+CREATE CONSTRAINT card_hash IF NOT EXISTS
+FOR (n:Card) REQUIRE n.card_hash IS UNIQUE;
+
+CREATE CONSTRAINT address_hash IF NOT EXISTS
+FOR (n:Address) REQUIRE n.address_hash IS UNIQUE;
+
+CREATE CONSTRAINT merchant_id IF NOT EXISTS
+FOR (n:Merchant) REQUIRE n.merchant_id IS UNIQUE;
