@@ -148,24 +148,22 @@ def main() -> None:
                 t.currency = r.currency,
                 t.is_fraud = toInteger(r.is_fraud)
 
-            // Core links
-            MATCH (p:Person {person_id: r.person_id})
+            WITH r, t
+
+            // Match all referenced nodes in one clause
+            MATCH (p:Person   {person_id: r.person_id}),
+                (m:Merchant {merchant_id: r.merchant_id}),
+                (d:Device   {device_id: r.device_id}),
+                (ip:IP      {ip: r.ip}),
+                (c:Card     {card_hash: r.card_hash}),
+                (a:Address  {address_hash: r.address_hash})
+
+            // Relationships
             MERGE (p)-[:MADE]->(t)
-
-            MATCH (m:Merchant {merchant_id: r.merchant_id})
             MERGE (t)-[:TO_MERCHANT]->(m)
-
-            // Shared infra
-            MATCH (d:Device {device_id: r.device_id})
             MERGE (t)-[:USED_DEVICE]->(d)
-
-            MATCH (ip:IP {ip: r.ip})
             MERGE (t)-[:FROM_IP]->(ip)
-
-            MATCH (c:Card {card_hash: r.card_hash})
             MERGE (t)-[:PAID_WITH]->(c)
-
-            MATCH (a:Address {address_hash: r.address_hash})
             MERGE (t)-[:BILLED_TO]->(a)
             """
 
@@ -175,7 +173,7 @@ def main() -> None:
                 session.run(tx_query, rows=batch)
 
             print(f"Loaded Transaction + rels: {len(tx_rows)}")
-            print("Done ✅")
+            print("Done")
 
     finally:
         driver.close()
