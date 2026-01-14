@@ -85,7 +85,7 @@ python -m arachne.simulator.generate_bronze
 python -m arachne.simulator.enrich_infra
 ```
 
-**Inject fraud rings (defined by shared infrastructure and burst in activity)
+**Inject fraud rings (defined by shared infrastructure and burst in activity)**
 ```bash
 python -m arachne.simulator.inject_rings
 ```
