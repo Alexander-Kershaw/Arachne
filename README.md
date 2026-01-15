@@ -99,57 +99,63 @@ python -m arachne.graph_load.load_bronze
 
 ---
 
-## Running graph analytics in Neo4j Browser
+## Running graph analytics in Neo4j 
 
-Arachne builds a person-to-person linkage edges from shared infrastructure entities and runs community (fraud ring) detection.
+Arachne builds explainable `Person↔Person` links from shared infrastructure and then runs Leiden community detection using Neo4j Graph Data Science (GDS).
 
-A full query instruction and investigative workflow are documented here:
+### 1) Build linkage edges, strong links, and communities
 
-**docs/investigation.md**
+From the repo root:
 
----
+```bash
+python scripts/run_cypher.py \
+  cypher/build_links_device.cypher \
+  cypher/build_links_ip.cypher \
+  cypher/build_links_card.cypher \
+  cypher/build_links_address.cypher \
+  cypher/build_strong_links.cypher \
+  cypher/run_gds.cypher
+```
 
-## Example outputs (from current run)
+This serve to:
 
-### Most suspicious communities (multiple persons)
+- create/extend LINKED_TO relationships between people with shared infra (with evidence counts)
 
-Fraud density by detected community (community_id_strong):
+- rebuild STRONG_LINK relationships (default threshold: w >= 30)
 
-- community 228: 66 people, 1828 tx, 247 fraud (fraud_rate 0.1351)
+- project STRONG_LINK into GDS as an undirected weighted graph
 
-- community 225: 56 people, 1491 tx, 190 fraud (fraud_rate 0.1274)
+- write community_id_strong onto :Person nodes via Leiden
 
-- community 35: 137 people, 3561 tx, 415 fraud (fraud_rate 0.1165)
-
-### Explainibility highlight (community 228)
-
-Examples of shared artefacts binding the community:
-
-- multiple cards shared across 4–6 people
-
-- devices shared across 6–8 people (including a high-volume device with 27 transactions)
-
-- addresses shared across 5–7 people
-
-### Top suspects example (from community 228)
-
-**tx refers to transactions**
-
-- P001749: 74 tx, 55 fraud (fraud_rate 0.7432)
-
-- P000738: 71 tx, 50 fraud (fraud_rate 0.7042)
 
 ---
 
-## Current status
+## Investigator console
 
-Still under active development with the following next planned milestones:
+open the investigator console from root:
 
-- Streamlit investigator console
+```bash
+streamlit run src/arachne/app/investigator.py
+```
 
-- GDS centrality and risk scoring
+**Recommended demo inputs:**
 
-- exportable fraud case files for each community
+- community_id_strong = 228
+
+- person_id = P001749
+
+**The console supports:**
+
+- top suspicious communities by fraud density
+
+- community explorer (shared cards/devices/addresses/IPs)
+
+- top suspects within a community
+
+- neighbour evidence for a selected suspect
+
+- case export (copy/download as markdown)
+
 
 ***
 
