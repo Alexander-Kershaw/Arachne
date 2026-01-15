@@ -5,6 +5,71 @@ from dataclasses import dataclass
 
 import streamlit as st
 from neo4j import GraphDatabase
+import pandas as pd
+
+
+
+def show_table(rows: list[dict], *, sort_by: str | None = None, descending: bool = True):
+    # For displaying query results nicely in Streamlit
+    if not rows:
+        st.info("No rows.")
+        return
+
+    df = pd.DataFrame(rows)
+
+    # Optional sorting
+    if sort_by and sort_by in df.columns:
+        df = df.sort_values(sort_by, ascending=not descending)
+
+    # Nicer column labels
+    rename = {
+        "tx_total": "tx_total",
+        "tx_fraud": "tx_fraud",
+        "fraud_rate": "fraud_rate",
+        "people_count": "people",
+        "linked_person": "linked_person",
+        "shared_device": "shared_device",
+        "shared_card": "shared_card",
+        "shared_address": "shared_address",
+        "shared_ip": "shared_ip",
+        "weight": "weight",
+        "artifact": "artifact",
+        "tx_count": "tx_count",
+    }
+    df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
+
+    styler = df.style
+
+    # Format a few columns cleanly
+    if "fraud_rate" in df.columns:
+        styler = styler.format({"fraud_rate": "{:.4f}"})
+    if "weight" in df.columns:
+        styler = styler.format({"weight": "{:.0f}"})
+
+    # Highlight columns that matter with color gradients
+    # Fraud rate: higher = hotter
+    if "fraud_rate" in df.columns:
+        styler = styler.background_gradient(subset=["fraud_rate"], cmap="Reds")
+
+    # Fraud tx: higher = hotter
+    if "tx_fraud" in df.columns:
+        styler = styler.background_gradient(subset=["tx_fraud"], cmap="Oranges")
+
+    # Weight: higher = hotter
+    if "weight" in df.columns:
+        styler = styler.background_gradient(subset=["weight"], cmap="Purples")
+
+    # Shared evidence counts: higher = hotter
+    shared_cols = [c for c in ["shared_device", "shared_card", "shared_address", "shared_ip"] if c in df.columns]
+    if shared_cols:
+        styler = styler.background_gradient(subset=shared_cols, cmap="Blues")
+
+    # Make it easier to read
+    styler = styler.set_properties(**{"font-size": "0.92rem"}).set_table_styles(
+        [{"selector": "th", "props": [("text-align", "left")]}]
+    )
+
+    st.dataframe(styler, use_container_width=True, hide_index=True)
 
 
 @dataclass(frozen=True)
@@ -142,7 +207,7 @@ with colA:
     """
     try:
         rows = run_query(cfg, q_comm)
-        st.dataframe(rows, use_container_width=True)
+        show_table(rows, sort_by="fraud_rate", descending=True)
     except Exception as e:
         st.error(str(e))
 
@@ -218,7 +283,7 @@ LIMIT 25;
 """
 try:
     neigh = run_query(cfg, q_neigh, {"pid": person_id.strip()})
-    st.dataframe(neigh, use_container_width=True)
+    show_table(neigh, sort_by="weight", descending=True)
 except Exception as e:
     st.error(str(e))
 
@@ -272,24 +337,24 @@ cid_param = {"cid": int(community_id)}
 
 with tabs[0]:
     try:
-        st.dataframe(run_query(cfg, q_cards, cid_param), use_container_width=True)
+        show_table(run_query(cfg, q_cards, cid_param), sort_by="people_count", descending=True)
     except Exception as e:
         st.error(str(e))
 
 with tabs[1]:
     try:
-        st.dataframe(run_query(cfg, q_devices, cid_param), use_container_width=True)
+        show_table(run_query(cfg, q_cards, cid_param), sort_by="people_count", descending=True)
     except Exception as e:
         st.error(str(e))
 
 with tabs[2]:
     try:
-        st.dataframe(run_query(cfg, q_addresses, cid_param), use_container_width=True)
+        show_table(run_query(cfg, q_cards, cid_param), sort_by="people_count", descending=True)
     except Exception as e:
         st.error(str(e))
 
 with tabs[3]:
     try:
-        st.dataframe(run_query(cfg, q_ips, cid_param), use_container_width=True)
+        show_table(run_query(cfg, q_cards, cid_param), sort_by="people_count", descending=True)
     except Exception as e:
         st.error(str(e))
