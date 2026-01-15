@@ -170,7 +170,6 @@ except Exception as e:
 
 
 if st.button("Use suspect's community"):
-    # Looks up the suspect's community and update session state
     q = """
     MATCH (p:Person {person_id: $pid})
     RETURN p.community_id_strong AS cid;
@@ -211,6 +210,23 @@ with colA:
     except Exception as e:
         st.error(str(e))
 
+    st.subheader("Top fraud suspects in selected community")
+
+    q_top10 = """
+    MATCH (p:Person)-[:MADE]->(t:Transaction)
+    WHERE p.community_id_strong = $cid
+    WITH p,
+        count(t) AS tx_total,
+        sum(CASE WHEN t.is_fraud = 1 THEN 1 ELSE 0 END) AS tx_fraud
+    WHERE tx_total > 0
+    RETURN p.person_id AS person_id,
+        tx_total,
+        tx_fraud,
+        round(1.0 * tx_fraud / tx_total, 4) AS fraud_rate
+    ORDER BY tx_fraud DESC, fraud_rate DESC, tx_total DESC
+    LIMIT 10;
+    """
+
 with colB:
     st.subheader("Community snapshot")
 
@@ -237,6 +253,17 @@ with colB:
             st.info("No results for that community_id_strong.")
     except Exception as e:
         st.error(str(e))
+
+try:
+    top10 = run_query(cfg, q_top10, {"cid": int(community_id)})
+    # If you've added the show_table helper, use it; otherwise fallback.
+    if "show_table" in globals():
+        show_table(top10, sort_by="tx_fraud", descending=True)
+    else:
+        st.dataframe(top10, use_container_width=True)
+except Exception as e:
+    st.error(str(e))
+
 
 st.divider()
 st.subheader("Suspect overview")
@@ -358,3 +385,88 @@ with tabs[3]:
         show_table(run_query(cfg, q_cards, cid_param), sort_by="people_count", descending=True)
     except Exception as e:
         st.error(str(e))
+
+
+st.divider()
+st.markdown("### Case export (copy to report)")
+
+q_case = """
+MATCH (p:Person)-[:MADE]->(t:Transaction)
+WHERE p.community_id_strong = $cid
+WITH count(DISTINCT p) AS people_count,
+     count(t) AS tx_total,
+     sum(CASE WHEN t.is_fraud = 1 THEN 1 ELSE 0 END) AS tx_fraud
+RETURN people_count, tx_total, tx_fraud,
+       round(1.0 * tx_fraud / tx_total, 4) AS fraud_rate;
+"""
+
+q_top_suspects = """
+MATCH (p:Person)-[:MADE]->(t:Transaction)
+WHERE p.community_id_strong = $cid
+WITH p,
+     count(t) AS tx_total,
+     sum(CASE WHEN t.is_fraud = 1 THEN 1 ELSE 0 END) AS tx_fraud
+RETURN p.person_id AS person_id,
+       tx_total,
+       tx_fraud,
+       round(1.0 * tx_fraud / tx_total, 4) AS fraud_rate
+ORDER BY tx_fraud DESC, fraud_rate DESC, tx_total DESC
+LIMIT 8;
+"""
+
+q_top_links = """
+MATCH (p:Person {person_id: $pid})-[r:LINKED_TO]-(q:Person)
+RETURN q.person_id AS linked_person,
+       r.w AS weight,
+       r.shared_device AS shared_device,
+       r.shared_card AS shared_card,
+       r.shared_address AS shared_address,
+       r.shared_ip AS shared_ip
+ORDER BY weight DESC
+LIMIT 8;
+"""
+
+cid_param = {"cid": int(community_id)}
+pid_param = {"pid": person_id.strip()}
+
+try:
+    case = run_query(cfg, q_case, cid_param)
+    top_s = run_query(cfg, q_top_suspects, cid_param)
+    top_l = run_query(cfg, q_top_links, pid_param)
+
+    if case:
+        c = case[0]
+        md = []
+        md.append(f"## Arachne Case Summary")
+        md.append(f"- **Community (community_id_strong):** `{int(community_id)}`")
+        md.append(f"- **Suspect:** `{person_id.strip()}`")
+        md.append("")
+        md.append("### Community stats")
+        md.append(f"- People: **{c['people_count']}**")
+        md.append(f"- Transactions: **{c['tx_total']}**")
+        md.append(f"- Fraud tx: **{c['tx_fraud']}**")
+        md.append(f"- Fraud rate: **{c['fraud_rate']}**")
+        md.append("")
+        md.append("### Top suspects (by fraud tx)")
+        for r in top_s:
+            md.append(f"- `{r['person_id']}`: tx={r['tx_total']}, fraud={r['tx_fraud']}, rate={r['fraud_rate']}")
+        md.append("")
+        md.append(f"### Top links for `{person_id.strip()}`")
+        for r in top_l:
+            md.append(
+                f"- `{r['linked_person']}` (w={r['weight']}): "
+                f"dev={r['shared_device']}, card={r['shared_card']}, addr={r['shared_address']}, ip={r['shared_ip']}"
+            )
+
+        export_md = "\n".join(md)
+        st.text_area("Markdown", value=export_md, height=340)
+        st.download_button(
+            "Download as .md",
+            data=export_md.encode("utf-8"),
+            file_name=f"arachne_case_community_{int(community_id)}_{person_id.strip()}.md",
+            mime="text/markdown",
+        )
+    else:
+        st.info("No case stats for that community.")
+except Exception as e:
+    st.error(str(e))
